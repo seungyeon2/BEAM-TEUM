@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEAM:TEUM | 상권의 빈틈을 비추다</title>
+    
+    <!-- 폰트: Pretendard -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    
+    <!-- 지도: Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- 아이콘: Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- 커스텀 CSS 연결 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div>
+            <div class="logo-area">
+                <h1>BEAM:TEUM</h1>
+            </div>
+            
+            <nav class="nav-menu">
+                <h3>Dashboards</h3>
+                <div class="menu-item active" data-target="section-analysis"><i class="fa-solid fa-chart-pie"></i> 상권 상세분석</div>
+                <div class="menu-item" data-target="section-opportunity"><i class="fa-solid fa-map-location-dot"></i> 기회지역 탐색</div>
+                <div class="menu-item" data-target="section-strategy"><i class="fa-solid fa-chess-knight"></i> 전략 시뮬레이션</div>
+            </nav>
+        </div>
+
+        <div class="promo-box">
+            <h4>F&B Strategy Insight</h4>
+            <p>직감보다 정확한 데이터.<br>유동인구는 넘치지만 매장은 부족한, <b>숨겨진 매출의 빈틈</b>을 선점하세요.</p>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <section class="header-area">
+            <div class="header-title">
+                <h1>BEAM:TEUM Opportunity Map</h1>
+                <p><b>"지도 위, 보이지 않던 기회를 비추다."</b> 수요와 공급의 불균형 속에서 찾아낸 성공의 빈틈</p>
+            </div>
+            <div class="search-bar">
+                <i class="fa-solid fa-location-dot"></i>
+                <select id="sidoSelect" class="region-select">
+                    <option value="">시/도 선택</option>
+                </select>
+                <select id="sigunguSelect" class="region-select">
+                    <option value="">시/군/구 선택</option>
+                </select>
+                <button id="searchBtn" class="search-btn">이동</button>
+            </div>
+        </section>
+
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+            
+            <!-- Section Header: 상권 상세분석 -->
+            <div class="section-header-container" id="section-analysis">
+                <h2 class="section-title">상권 상세분석</h2>
+                <p class="section-desc">누가 오고, 언제 관심도가 높을까요?</p>
+            </div>
+
+            <!-- 1. 페르소나 카드 -->
+            <div class="card persona-card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fa-solid fa-user-tag"></i> 핵심 방문객 (Persona)</div>
+                    <span class="persona-tag" id="personaRegionTag">지역 선택 대기</span>
+                </div>
+                <div class="persona-content" id="personaContent">
+                    <p class="empty-state-text">지도에서 지역을 클릭하거나<br>검색하여 분석을 시작하세요.</p>
+                </div>
+            </div>
+
+            <!-- 2. 트렌드 차트 -->
+            <div class="card chart-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-arrow-trend-up"></i> '맛집' 검색 관심도 추이
+                        <small class="source-text">(Source: Naver DataLab via Supabase)</small>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Section Header: 기회지역 탐색 -->
+            <div class="section-header-container" id="section-opportunity">
+                <h2 class="section-title">기회지역 탐색</h2>
+                <p class="section-desc">이 상권에 빈틈이 있을까요?</p>
+            </div>
+
+            <!-- 3. 포지션 카드 -->
+            <div class="card position-card">
+                <div class="card-header">
+                    <div class="card-title"><i class="fa-solid fa-crosshairs"></i> Market Position</div>
+                </div>
+                <div id="positionContent">
+                    <div class="quadrant-badge badge-low" id="quadrantBadge">분석 대기</div>
+                    <ul class="position-list">
+                        <li>👥 <b>관광 수요:</b> <span id="demandVal">-</span></li>
+                        <li>🏪 <b>식당 공급:</b> <span id="supplyVal">-</span></li>
+                    </ul>
+                    <p class="strategy-text" id="strategyText">
+                        지도를 클릭하여 지역별 진입 전략을 확인하세요.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 4. 지도 영역 -->
+            <div class="card map-card">
+                <div class="map-filter-container">
+                    <button class="filter-btn active" data-filter="all">전체</button>
+                    <button class="filter-btn" data-filter="기회지역">기회지역</button>
+                    <button class="filter-btn" data-filter="경쟁포화지역">경쟁포화</button>
+                    <button class="filter-btn" data-filter="저관심지역">저관심</button>
+                    <button class="filter-btn" data-filter="공급과잉">공급과잉</button>
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <!-- Section Header: 전략 시뮬레이션 -->
+            <div class="section-header-container" id="section-strategy">
+                <h2 class="section-title">전략 시뮬레이션</h2>
+                <p class="section-desc">그래서, 얼마를 벌 수 있나요?</p>
+            </div>
+
+            <!-- Bottom Row: 분석 인사이트 & 예상 매출 -->
+            <div class="bottom-row-container">
+                <!-- 5. 분석 인사이트 -->
+                <div class="card ai-insight-card">
+                    <div class="card-header">
+                        <div class="card-title" style="color: var(--primary-color);"><i class="fa-solid fa-lightbulb"></i> Strategy Insight</div>
+                    </div>
+                    <div class="ai-typing-area">
+                        <span id="aiText">지역 데이터를 선택하면 분석 결과가 표시됩니다...</span><span class="cursor"></span>
+                    </div>
+                </div>
+
+                <!-- 6. 예상 매출 시뮬레이터 -->
+                <div class="card revenue-card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fa-solid fa-calculator"></i> 예상 매출 시뮬레이터</div>
+                    </div>
+                    <div class="revenue-content">
+                        <div class="slider-container">
+                            <div class="slider-header">
+                                <span>시장 점유율 목표 (Capture Rate) <i class="fa-solid fa-circle-question" id="logicInfoBtn" style="cursor:pointer; color:#b2bec3; margin-left:5px;"></i></span>
+                                <span id="captureRateDisplay" class="highlight-text">0.01%</span>
+                            </div>
+                            
+                            <!-- 로직 설명 박스 -->
+                            <div id="logicInfoBox" class="logic-info-box">
+                                <p><strong>💡 보수적 수익 추정 (Conservative)</strong></p>
+                                <ul>
+                                    <li>👨‍👩‍👧 <b>동반 인원 (Group Factor 2.4명)</b><br>객단가는 '테이블 기준'이므로 인원수로 나눔</li>
+                                    <li>🏪 <b>점유율 (Share 0.01%~0.1%)</b><br>경쟁사를 제치고 내 가게를 선택할 확률</li>
+                                </ul>
+                                <p style="margin-top:5px; color:#e17055; font-size:0.8rem;">* 사업 타당성은 최악의 경우를 가정해야 안전합니다.</p>
+                            </div>
+
+                            <input type="range" id="captureRateSlider" min="0.01" max="0.10" step="0.01" value="0.01" class="custom-range">
+                            <div class="slider-labels">
+                                <span>0.01% (신규)</span>
+                                <span>0.10% (대박)</span>
+                            </div>
+                        </div>
+
+                        <!-- 매장 규모 설정 (New) -->
+                        <div class="size-selector-container" style="margin-bottom: 15px;">
+                            <div class="slider-header">
+                                <span>매장 규모 설정 (평수)</span>
+                                <span id="storeSizeDisplay" class="highlight-text">40평</span>
+                            </div>
+                            <div class="size-btn-group">
+                                <button class="size-btn" data-size="15">🏠 소형 (15평)</button>
+                                <button class="size-btn active" data-size="40">🏢 중형 (40평)</button>
+                                <button class="size-btn" data-size="80">🏭 대형 (80평)</button>
+                            </div>
+                        </div>
+
+                        <div class="revenue-display">
+                            <span class="revenue-label">월 예상 매출</span>
+                            <span class="revenue-value" id="revenueVal">- 원</span>
+                            <div class="daily-visitor-tag">
+                                📅 하루 약 <span id="dailyVisitorVal" style="color:#e17055;">-</span>명 방문 예상
+                            </div>
+                        </div>
+
+                        <!-- 평당 매출 효율 진단 (New) -->
+                        <div class="efficiency-box" id="efficiencyBox" style="display:none; background:#f8f9fa; padding:10px; border-radius:8px; margin-top:10px; border:1px solid #dfe6e9;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                <span style="font-size:0.9rem; font-weight:600; color:#2d3436;">평당 매출 효율</span>
+                                <span id="effScore" style="font-weight:800; color:#2d3436;">- 만원/평</span>
+                            </div>
+                            <div id="effMessage" style="font-size:0.85rem; line-height:1.4;"></div>
+                        </div>
+
+                        <p class="revenue-desc">
+                            (지역 방문객 <span id="revVisitor" style="font-weight:bold">-</span>명 × <span id="revRate">0.01%</span> ÷ 2.4명) × 테이블단가 <span id="revSpend" style="font-weight:bold">-</span>원
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 커스텀 JS 연결 -->
+    <script src="script.js"></script>
+</body>
+</html>
